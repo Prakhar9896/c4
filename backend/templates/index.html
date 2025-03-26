@@ -1,0 +1,149 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connect Four AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            gap: 5px;
+            margin-top: 20px;
+            background-color: #4a90e2;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .cell:hover {
+            background-color: #e0e0e0;
+        }
+        .player-piece {
+            background-color: red;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .ai-piece {
+            background-color: yellow;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        #difficulty-selector {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Connect Four AI</h1>
+    
+    <div id="difficulty-selector">
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        <button id="new-game-btn">New Game</button>
+    </div>
+
+    <div id="game-board"></div>
+    <div id="game-status"></div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const gameStatus = document.getElementById('game-status');
+        const difficultySelect = document.getElementById('difficulty');
+        const newGameBtn = document.getElementById('new-game-btn');
+
+        function createBoard(board) {
+            gameBoard.innerHTML = '';
+            for (let row = 5; row >= 0; row--) {
+                for (let col = 0; col < 7; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    // Add piece based on board state
+                    if (board[row][col] === 1) {
+                        const piece = document.createElement('div');
+                        piece.classList.add('player-piece');
+                        cell.appendChild(piece);
+                    } else if (board[row][col] === 2) {
+                        const piece = document.createElement('div');
+                        piece.classList.add('ai-piece');
+                        cell.appendChild(piece);
+                    }
+
+                    cell.addEventListener('click', () => makeMove(col));
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function newGame() {
+            const difficulty = difficultySelect.value;
+            axios.post('/new_game', { difficulty })
+                .then(response => {
+                    createBoard(response.data.board);
+                    gameStatus.textContent = 'New game started. Your turn!';
+                })
+                .catch(error => {
+                    console.error('Error starting new game:', error);
+                });
+        }
+
+        function makeMove(column) {
+            axios.post('/make_move', { column })
+                .then(response => {
+                    createBoard(response.data.board);
+
+                    switch(response.data.status) {
+                        case 'player_win':
+                            gameStatus.textContent = 'Congratulations! You win!';
+                            break;
+                        case 'ai_win':
+                            gameStatus.textContent = 'AI wins! Better luck next time.';
+                            break;
+                        case 'draw':
+                            gameStatus.textContent = "It's a draw!";
+                            break;
+                        case 'continue':
+                            gameStatus.textContent = 'AI played in column ' + (response.data.ai_column + 1);
+                            break;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error making move:', error);
+                    gameStatus.textContent = error.response.data.error;
+                });
+        }
+
+        // Event Listeners
+        newGameBtn.addEventListener('click', newGame);
+        
+        // Initialize game on page load
+        newGame();
+    </script>
+</body>
+</html>
