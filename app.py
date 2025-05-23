@@ -1,4 +1,3 @@
-# app.py
 import numpy as np
 import random
 import json
@@ -7,10 +6,9 @@ from flask_session import Session
 
 class ConnectFourAI:
     def __init__(self, difficulty='medium'):
-        # Create a 6x7 board filled with zeros
         self.board = np.zeros((6, 7), dtype=int)
-        self.current_player = 1  # Human player starts
-        self.ai_player = 2  # AI is player 2
+        self.current_player = 1  
+        self.ai_player = 2 
         self.difficulty = difficulty
 
     def is_valid_move(self, column):
@@ -31,7 +29,6 @@ class ConnectFourAI:
 
     def check_winner(self, board, player):
         """Check for a winning condition"""
-        # Check horizontal locations
         for c in range(4):
             for r in range(6):
                 if (board[r, c] == player and 
@@ -39,8 +36,6 @@ class ConnectFourAI:
                     board[r, c+2] == player and 
                     board[r, c+3] == player):
                     return True
-
-        # Check vertical locations
         for c in range(7):
             for r in range(3):
                 if (board[r, c] == player and 
@@ -49,7 +44,6 @@ class ConnectFourAI:
                     board[r+3, c] == player):
                     return True
 
-        # Check positively sloped diagonals
         for c in range(4):
             for r in range(3):
                 if (board[r, c] == player and 
@@ -58,7 +52,6 @@ class ConnectFourAI:
                     board[r+3, c+3] == player):
                     return True
 
-        # Check negatively sloped diagonals
         for c in range(4):
             for r in range(3, 6):
                 if (board[r, c] == player and 
@@ -94,32 +87,27 @@ class ConnectFourAI:
         """Score the entire board position"""
         score = 0
 
-        # Score center column (strategic advantage)
         center_array = [int(i) for i in list(board[:, 3])]
         center_count = center_array.count(player)
         score += center_count * 3
 
-        # Score Horizontal
         for r in range(6):
             row_array = [int(i) for i in list(board[r, :])]
             for c in range(4):
                 window = row_array[c:c+4]
                 score += self.evaluate_window(window, player)
 
-        # Score Vertical
         for c in range(7):
             col_array = [int(i) for i in list(board[:, c])]
             for r in range(3):
                 window = col_array[r:r+4]
                 score += self.evaluate_window(window, player)
 
-        # Score positive sloped diagonal
         for r in range(3):
             for c in range(4):
                 window = [board[r+i][c+i] for i in range(4)]
                 score += self.evaluate_window(window, player)
 
-        # Score negative sloped diagonal
         for r in range(3, 6):
             for c in range(4):
                 window = [board[r-i][c+i] for i in range(4)]
@@ -144,13 +132,11 @@ class ConnectFourAI:
         if self.is_board_full(board):
             return (None, 0)
 
-        # Maximizing player (AI)
         if maximizing_player:
             value = float('-inf')
             column = random.choice(valid_locations)
             
             for col in valid_locations:
-                # Create a copy of the board to simulate move
                 board_copy = board.copy()
                 temp_board = self.drop_piece(board_copy, col, self.ai_player)
                 
@@ -159,21 +145,18 @@ class ConnectFourAI:
                 if new_score > value:
                     value = new_score
                     column = col
-                
-                # Alpha-beta pruning
+
                 alpha = max(alpha, value)
                 if alpha >= beta:
                     break
             
             return column, value
 
-        # Minimizing player (Human)
         else:
             value = float('inf')
             column = random.choice(valid_locations)
             
             for col in valid_locations:
-                # Create a copy of the board to simulate move
                 board_copy = board.copy()
                 temp_board = self.drop_piece(board_copy, col, 1)
                 
@@ -182,8 +165,7 @@ class ConnectFourAI:
                 if new_score < value:
                     value = new_score
                     column = col
-                
-                # Alpha-beta pruning
+   
                 beta = min(beta, value)
                 if alpha >= beta:
                     break
@@ -193,17 +175,14 @@ class ConnectFourAI:
     def get_ai_move(self):
         """Determine AI's move based on difficulty"""
         if self.difficulty == 'easy':
-            # Random move for easy difficulty
             valid_locations = self.get_valid_locations()
             return random.choice(valid_locations)
         
         elif self.difficulty == 'medium':
-            # Minimax with moderate depth
             column, _ = self.minimax(self.board.copy(), 4, float('-inf'), float('inf'), True)
             return column
         
-        else:  # hard difficulty
-            # Deeper minimax search
+        else:  
             column, _ = self.minimax(self.board.copy(), 6, float('-inf'), float('inf'), True)
             return column
 
@@ -218,9 +197,8 @@ class ConnectFourAI:
         """Convert numpy board to list for JSON serialization"""
         return self.board.tolist()
 
-# Flask application
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['SECRET_KEY'] = 'a9e98bf7e2f641fda1d2e91d9c1f2a1e'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
@@ -246,26 +224,20 @@ def new_game():
 @app.route('/make_move', methods=['POST'])
 def make_move():
     """Handle player's move and AI's response"""
-    # Retrieve game state from session
     game_data = session.get('game')
     if not game_data:
         return jsonify({'error': 'No active game'}), 400
 
-    # Recreate game object
     game = ConnectFourAI(game_data['difficulty'])
     game.board = np.array(game_data['board'])
 
-    # Get player's move
     column = request.json.get('column')
-    
-    # Validate move
+
     if not game.is_valid_move(column):
         return jsonify({'error': 'Invalid move'}), 400
 
-    # Player's move
     game.make_move(column, 1)
 
-    # Check for player win
     if game.check_winner(game.board, 1):
         session.pop('game', None)
         return jsonify({
@@ -273,7 +245,6 @@ def make_move():
             'status': 'player_win'
         })
 
-    # Check for draw
     if game.is_board_full(game.board):
         session.pop('game', None)
         return jsonify({
@@ -281,11 +252,9 @@ def make_move():
             'status': 'draw'
         })
 
-    # AI's move
     ai_column = game.get_ai_move()
     game.make_move(ai_column, 2)
 
-    # Check for AI win
     if game.check_winner(game.board, 2):
         session.pop('game', None)
         return jsonify({
@@ -294,7 +263,6 @@ def make_move():
             'ai_column': ai_column
         })
 
-    # Check for draw
     if game.is_board_full(game.board):
         session.pop('game', None)
         return jsonify({
@@ -302,7 +270,6 @@ def make_move():
             'status': 'draw'
         })
 
-    # Update session with new game state
     session['game'] = {
         'board': game.board_to_list(),
         'difficulty': game.difficulty
